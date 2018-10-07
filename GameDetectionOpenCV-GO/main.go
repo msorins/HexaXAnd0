@@ -62,17 +62,24 @@ func filterFirstTwoContourLevels(contours [][]image.Point) [][]image.Point {
 		if visited[i] == false {
 			depth[i] = 0
 			q := []int{i}
+			kids := 0
 
 			for len(q) > 0 {
 				crt := q[0] // .front
 				q = q[1:] // .pop
 
 				for j := 0; j < len(graf[crt]); j += 1 {
-					if depth[ graf[crt][j] ] == -1 {
+					if depth[ graf[crt][j] ] < depth[crt] + 1 {
 						depth[ graf[crt][j] ] = depth[crt] + 1
+						kids += 1
 						q = append(q, graf[crt][j])
 					}
 				}
+			}
+
+			// Also filter contours that do not have any kids
+			if kids == 0 {
+				depth[i] = 999
 			}
 		}
 	}
@@ -86,6 +93,79 @@ func filterFirstTwoContourLevels(contours [][]image.Point) [][]image.Point {
 	}
 
 	return finalContours
+}
+
+func filterContoursThatDoNotHaveNineKids(contours [][]image.Point) ([][]image.Point, int) {
+	var graf [1000][]int
+	var visited[1000]bool
+	var depth[1000]int
+	var rects []gocv.RotatedRect
+	theOne := -1
+
+	// Form Min Area Rectangles from conotours
+	for i := 0; i < len(contours); i++ {
+		visited[i] = false
+		depth[i] = -1
+		rects = append(rects, gocv.MinAreaRect(contours[i]))
+	}
+
+	// Form the graf & visited
+	for i := 0; i < len(contours); i++  {
+		for j := 0; j < len(contours); j++ {
+			if i == j {
+				continue
+			}
+
+			if rects[j].BoundingRect.In( rects[i].BoundingRect ) {
+				graf[i] = append(graf[i], j)
+				visited[j] = true
+			}
+		}
+	}
+
+	// Form the depth vector
+	for i := 0; i < len(contours); i++ {
+		// If we found a node at root level
+		if visited[i] == false {
+			depth[i] = 0
+			q := []int{i}
+			kids := 0
+
+			for len(q) > 0 {
+				crt := q[0] // .front
+				q = q[1:]   // .pop
+
+				for j := 0; j < len(graf[crt]); j += 1 {
+					if depth[ graf[crt][j] ] < depth[crt]+1 {
+						depth[ graf[crt][j] ] = depth[crt] + 1
+						kids += 1
+						q = append(q, graf[crt][j])
+					}
+				}
+			}
+
+			// Also filter contours that do not have any kids
+			if kids != 9 {
+				depth[i] = 999
+			}
+			if kids == 9 {
+				theOne = i
+			}
+		}
+	}
+
+	// Filter all the contours with depth >= 2
+	finalContours := [][]image.Point{}
+	for i := 0; i < len(contours); i++ {
+		if depth[i] < 2 {
+			finalContours = append(finalContours, contours[i])
+		}
+		if i == theOne {
+			theOne = len(finalContours) - 1
+		}
+	}
+
+	return finalContours, theOne
 }
 
 func processImage(img gocv.Mat) gocv.Mat {
@@ -132,27 +212,17 @@ func processImage(img gocv.Mat) gocv.Mat {
 	}
 
 	// Filter all the contours that are very nested
-	approxedContours = filterFirstTwoContourLevels(approxedContours)
+	var theOne int
+	approxedContours  = filterFirstTwoContourLevels(approxedContours)
+	approxedContours, theOne = filterContoursThatDoNotHaveNineKids(approxedContours)
 
-	// Choose the game contour
-	for i := 0; i < len(approxedContours); i++ {
-		overlaps := 0
-		for j := 0; j < len(approxedContours); j++ {
-			if j == i {
-				continue
-			}
-
-			if isCountourInContour(approxedContours[i], approxedContours[j]) {
-				overlaps += 1
-			}
+	if len(approxedContours) != 0 {
+		if theOne != -1 {
+			gocv.DrawContours(&img, approxedContours, theOne, color.RGBA{0, 255, 0, 100}, 2)
 		}
-
-		if overlaps >= 9 {
-			gocv.DrawContours(&img, approxedContours, i, color.RGBA{0, 255, 0, 100}, 2)
-		}
+		gocv.DrawContours(&img, approxedContours, -1, color.RGBA{0, 0, 255, 100}, 1)
 	}
 
-	gocv.DrawContours(&img, approxedContours, -1, color.RGBA{255, 0, 0, 100}, 1)
 	return img
 }
 
@@ -161,14 +231,17 @@ func main() {
 	finalImageWindow := gocv.NewWindow("FinalImage")
 	img := gocv.NewMat()
 
-	//img = gocv.IMRead("/Users/so/Desktop/XAnd0/GameDetectionOpenCV-GO/imgsun5.png", gocv.IMReadColor)  // To read from file
+	//img = gocv.IMRead("/Users/so/Desktop/XAnd0/GameDetectionOpenCV-GO/probimg32.png", gocv.IMReadColor)  // To read from file
 	//img = processImage(img)
 	//finalImageWindow.IMShow(img)
 	//finalImageWindow.WaitKey(200000)
 
+	//counter := 0
 	for {
 		//Read from webcam
 		webcam.Read(&img)
+		//gocv.IMWrite("probimg" + strconv.Itoa(counter) + ".png", img)
+		//counter++
 
 		//Process the image
 		img = processImage(img)

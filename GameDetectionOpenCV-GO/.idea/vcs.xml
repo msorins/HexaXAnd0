@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$/src/github.com/davecgh/go-spew" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/github.com/gonum/blas" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/github.com/gonum/floats" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/github.com/gonum/internal" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/github.com/gonum/lapack" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/github.com/gonum/matrix" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/github.com/lazywei/go-opencv" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/github.com/stretchr/testify" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/gocv.io/x/gocv" vcs="Git" />
+  </component>
+</project>

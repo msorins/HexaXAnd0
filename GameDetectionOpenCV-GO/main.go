@@ -29,6 +29,65 @@ func isCountourInContour(external []image.Point, internal []image.Point) bool {
 	return internalRect.BoundingRect.In( externalRect.BoundingRect )
 }
 
+func filterFirstTwoContourLevels(contours [][]image.Point) [][]image.Point {
+	var graf [1000][]int
+	var visited[1000]bool
+	var depth[1000]int
+	var rects []gocv.RotatedRect
+
+	// Form Min Area Rectangles from conotours
+	for i := 0; i < len(contours); i++ {
+		visited[i] = false
+		depth[i] = -1
+		rects = append(rects, gocv.MinAreaRect(contours[i]))
+	}
+
+	// Form the graf & visited
+	for i := 0; i < len(contours); i++  {
+		for j := 0; j < len(contours); j++ {
+			if i == j {
+				continue
+			}
+
+			if rects[j].BoundingRect.In( rects[i].BoundingRect ) {
+				graf[i] = append(graf[i], j)
+				visited[j] = true
+			}
+		}
+	}
+
+	// Form the depth vector
+	for i := 0; i < len(contours); i++ {
+		// If we found a node at root level
+		if visited[i] == false {
+			depth[i] = 0
+			q := []int{i}
+
+			for len(q) > 0 {
+				crt := q[0] // .front
+				q = q[1:] // .pop
+
+				for j := 0; j < len(graf[crt]); j += 1 {
+					if depth[ graf[crt][j] ] == -1 {
+						depth[ graf[crt][j] ] = depth[crt] + 1
+						q = append(q, graf[crt][j])
+					}
+				}
+			}
+		}
+	}
+
+	// Filter all the contours with depth >= 2
+	finalContours := [][]image.Point{}
+	for i := 0; i < len(contours); i++ {
+		if depth[i] < 2 {
+			finalContours = append(finalContours, contours[i])
+		}
+	}
+
+	return finalContours
+}
+
 func processImage(img gocv.Mat) gocv.Mat {
 	// Declare visualisation windows
 	threshold := gocv.NewWindow("Threshold")
@@ -55,46 +114,45 @@ func processImage(img gocv.Mat) gocv.Mat {
 
 	// Get the contours
 	contours := gocv.FindContours(gray, gocv.RetrievalTree, gocv.ContourApproximationMode(gocv.ChainApproxSimple))
-	var aproxedContours [][]image.Point
+	var approxedContours [][]image.Point
 
 	// Approximate the contours with an e = 3%
 	for i := 0; i < len(contours); i++{
-		approxedContour := gocv.ApproxPolyDP(contours[i], 30, true)
-		if len(approxedContour) >= 4 {
-			aproxedContours = append(aproxedContours, approxedContour)
-		}
+		approxedContour := gocv.ApproxPolyDP(contours[i], 50, true)
 
+		// Only contours that have between 4 and 6 edges will remain
+		if len(approxedContour) == 4 {
+			approxedContours = append(approxedContours, approxedContour)
+		}
 	}
 
-	// Draw the last contour (the most inside one)
-	if len(aproxedContours) == 0 {
+	// If no contours => bye
+	if len(approxedContours) == 0 {
 		return img
 	}
 
-	// Check for overlaps
-	for i := 0; i < len(aproxedContours); i++ {
+	// Filter all the contours that are very nested
+	approxedContours = filterFirstTwoContourLevels(approxedContours)
+
+	// Choose the game contour
+	for i := 0; i < len(approxedContours); i++ {
 		overlaps := 0
-		for j := 0; j < len(aproxedContours); j++ {
+		for j := 0; j < len(approxedContours); j++ {
 			if j == i {
 				continue
 			}
 
-			if isCountourInContour(aproxedContours[i], aproxedContours[j]) {
+			if isCountourInContour(approxedContours[i], approxedContours[j]) {
 				overlaps += 1
 			}
 		}
 
 		if overlaps >= 9 {
-			gocv.DrawContours(&img, aproxedContours, i, color.RGBA{0, 255, 0, 100}, 2)
+			gocv.DrawContours(&img, approxedContours, i, color.RGBA{0, 255, 0, 100}, 2)
 		}
 	}
 
-	//for i := 0; i < len(aproxedContours); i++  {
-	//	gocv.DrawContours(&img, aproxedContours, i, color.RGBA{255, 0, 0, 100}, 1)
-	//	finalImageWindow.IMShow(img)
-	//	finalImageWindow.WaitKey(200)
-
-	gocv.DrawContours(&img, aproxedContours, -1, color.RGBA{255, 0, 0, 100}, 1)
+	gocv.DrawContours(&img, approxedContours, -1, color.RGBA{255, 0, 0, 100}, 1)
 	return img
 }
 
@@ -103,14 +161,19 @@ func main() {
 	finalImageWindow := gocv.NewWindow("FinalImage")
 	img := gocv.NewMat()
 
+	//img = gocv.IMRead("/Users/so/Desktop/XAnd0/GameDetectionOpenCV-GO/imgsun5.png", gocv.IMReadColor)  // To read from file
+	//img = processImage(img)
+	//finalImageWindow.IMShow(img)
+	//finalImageWindow.WaitKey(200000)
+
 	for {
-		// Read from webcam
+		//Read from webcam
 		webcam.Read(&img)
 
-		// Process the image
+		//Process the image
 		img = processImage(img)
 
-		// Show the result
+		//Show the result
 		finalImageWindow.IMShow(img)
 		finalImageWindow.WaitKey(200)
 		}

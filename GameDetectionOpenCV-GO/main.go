@@ -4,7 +4,6 @@ import (
 	"gocv.io/x/gocv"
 	"image"
 	"image/color"
-	"strconv"
 )
 
 func filterByHeightWidthRaport(contour []image.Point) bool {
@@ -32,11 +31,10 @@ func isCountourInContour(external []image.Point, internal []image.Point) bool {
 
 func main() {
 	webcam, _ := gocv.VideoCaptureDevice(0)
-	window := gocv.NewWindow("Hello")
+	finalImageWindow := gocv.NewWindow("FinalImage")
 	img := gocv.NewMat()
-	window2 := gocv.NewWindow("Window2")
+	thresholdWindow := gocv.NewWindow("Threshold")
 
-	counter := 0
 	for {
 		webcam.Read(&img)
 
@@ -45,8 +43,6 @@ func main() {
 		// Invert pixels
 		inverted := gocv.NewMat()
 		gocv.BitwiseNot(img, &inverted)
-		gocv.IMWrite("img"+ strconv.Itoa(counter) +".png", img)
-		counter += 1
 
 		// Apply a threshold
 		gray := gocv.NewMat()
@@ -59,8 +55,8 @@ func main() {
 				}
 			}
 		}
-		window2.IMShow(gray)
-		window2.WaitKey(100)
+		thresholdWindow.IMShow(gray)
+		thresholdWindow.WaitKey(100)
 
 		// Get the contours
 		contours := gocv.FindContours(gray, gocv.RetrievalTree, gocv.ContourApproximationMode(gocv.ChainApproxSimple))
@@ -99,12 +95,12 @@ func main() {
 
 		//for i := 0; i < len(aproxedContours); i++  {
 		//	gocv.DrawContours(&img, aproxedContours, i, color.RGBA{255, 0, 0, 100}, 1)
-		//	window.IMShow(img)
-		//	window.WaitKey(200)
+		//	finalImageWindow.IMShow(img)
+		//	finalImageWindow.WaitKey(200)
 
 		gocv.DrawContours(&img, aproxedContours, -1, color.RGBA{255, 0, 0, 100}, 1)
-		window.IMShow(img)
-		window.WaitKey(200)
+		finalImageWindow.IMShow(img)
+		finalImageWindow.WaitKey(200)
 		}
 
 

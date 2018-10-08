@@ -123,7 +123,7 @@ func (this *Detect) filterContoursThatDoNotHaveNineKids(contours [][]image.Point
 				q = q[1:]   // .pop
 
 				for j := 0; j < len(graf[crt]); j += 1 {
-					if depth[ graf[crt][j] ] < depth[crt]+1 {
+					if depth[ graf[crt][j] ] <= depth[crt]+1 {
 						depth[ graf[crt][j] ] = depth[crt] + 1
 						kids += 1
 						q = append(q, graf[crt][j])
@@ -309,7 +309,7 @@ func (this *Detect) processImage() (gocv.Mat, [3][3]int) {
 	this.board = this.computeBoardState()
 
 	// Draw the result contours on the img
-	if len(approxedContours) != 0 {
+	if len(this.contours) != 0 {
 		// Draw root contour
 		if len(this.rootContour) != 0 {
 			rc := [][]image.Point{this.rootContour}
@@ -317,7 +317,7 @@ func (this *Detect) processImage() (gocv.Mat, [3][3]int) {
 		}
 
 		// Draw the other contours
-		gocv.DrawContours(&this.img, approxedContours, -1, color.RGBA{0, 0, 255, 100}, 2)
+		gocv.DrawContours(&this.img, this.contours, -1, color.RGBA{0, 0, 255, 100}, 2)
 	}
 
 	return this.img, this.board

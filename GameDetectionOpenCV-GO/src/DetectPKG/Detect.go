@@ -207,8 +207,8 @@ func (this *Detect) computeBoardState() [3][3]int {
 	game[0][0] = 1
 	index := 0
 
-	this.img.ConvertTo(&this.img, gocv.MatTypeCV8S)
-	this.imgGray.ConvertTo(&this.imgGray, gocv.MatTypeCV8S)
+	//this.img.ConvertTo(&this.img, gocv.MatTypeCV8S)
+	//this.imgGray.ConvertTo(&this.imgGray, gocv.MatTypeCV8S)
 	used := [2000][2000]bool{}
 
 	for j := 0; j < 3; j++ {
@@ -216,21 +216,27 @@ func (this *Detect) computeBoardState() [3][3]int {
 			dx := []int{-1,1,0,0}
 			dy := []int{0,0,-1,1}
 
+			game[i][j] = 0
 			q := []image.Point{ image.Point{rects[index].Center.Y, rects[index].Center.X } }
 			for len(q) > 0 {
 				front := q[0]
 				q = q[1:]
 
 				b := float64(this.img.GetVeciAt(front.X, front.Y)[0])
-				//g := float64(this.img.GetVeciAt(front.X, front.Y)[1])
+				g := float64(this.img.GetVeciAt(front.X, front.Y)[1])
 				r := float64(this.img.GetVeciAt(front.X, front.Y)[2])
 
 				if( this.imgGray.GetUCharAt(front.X, front.Y) != 0 ) {
-					if r >= 120 {
+					avgBlack := (math.Abs(b - g) + math.Abs(b - r) + math.Abs(g - r)) / 3
+					if avgBlack < 35 {
+						continue
+					}
+
+					if r >= g && r >= b {
 						game[i][j] = 1
 						break
 					}
-					if b >= 120 {
+					if b >= g && b >= r {
 						game[i][j] = 2
 						break
 					}

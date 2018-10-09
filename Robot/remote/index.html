@@ -9,8 +9,18 @@
 				robot.connectSkill({
 					skillID: skillID
 				});
+
+				document.getElementById("ReExec").onclick = function() {
+					robot.sendData({
+						skillID: skillID,
+						data: "ReExec"
+					})
+				}
 			}});
 		</script>
 	</head>
-	<body></body>
+	<body>
+
+    <button id="ReExec">ReExec</button>
+	</body>
 </html>

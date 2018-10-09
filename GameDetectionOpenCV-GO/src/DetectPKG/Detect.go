@@ -56,7 +56,7 @@ func (this *Detect) filterFirstTwoContourLevels(contours [][]image.Point) [][]im
 				q = q[1:] // .pop
 
 				for j := 0; j < len(graf[crt]); j += 1 {
-					if depth[ graf[crt][j] ] < depth[crt] + 1 {
+					if depth[ graf[crt][j] ] <= depth[crt] + 1 {
 						depth[ graf[crt][j] ] = depth[crt] + 1
 						kids += 1
 						q = append(q, graf[crt][j])
@@ -308,8 +308,13 @@ func (this *Detect) processImage() (gocv.Mat, [3][3]int) {
 	}
 
 	// Filter all the contours that are very nested
-	this.contours  = this.filterFirstTwoContourLevels(approxedContours)
-	this.contours, this.rootContour = this.filterContoursThatDoNotHaveNineKids(this.contours)
+	finalImageWindow := gocv.NewWindow("DrawingPortionsImage")
+	gocv.DrawContours(&this.img, approxedContours, -1, color.RGBA{255, 0, 0, 100}, 1)
+	finalImageWindow.IMShow(this.img)
+	finalImageWindow.WaitKey(500)
+
+	//this.contours  = this.filterFirstTwoContourLevels(approxedContours)
+	this.contours, this.rootContour = this.filterContoursThatDoNotHaveNineKids(approxedContours)
 
 	// Get the parsed baoard
 	this.board = this.computeBoardState()

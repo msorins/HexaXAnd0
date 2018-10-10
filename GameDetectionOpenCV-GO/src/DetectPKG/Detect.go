@@ -45,7 +45,6 @@ func (this *Detect) filterMaxDepthApproach(contours [][]image.Point) ([][]image.
 				continue
 			}
 
-
 			if rects[j].In( rects[i] ) {
 				graf[i] = append(graf[i], j)
 				visited[j] = true
@@ -74,15 +73,10 @@ func (this *Detect) filterMaxDepthApproach(contours [][]image.Point) ([][]image.
 		}
 	}
 
- 	for i := 0; i < len(contours); i++  {
-		for j := 0; j < len(contours); j++ {
-			if i == j {
-				continue
-			}
-
-			if rects[j].In( rects[i] ) && maxdepth[j] == maxdepth[i] + 1 {
-				grafStrict[i] = append(grafStrict[i], j)
-				visited[j] = true
+	for i := 0; i < len(contours); i++  {
+		for j := 0; j < len(graf[i]); j++ {
+			if maxdepth[ graf[i][j] ] == maxdepth[i] + 1 {
+				grafStrict[i] = append(grafStrict[i], graf[i][j])
 			}
 		}
 	}

@@ -1,9 +1,14 @@
 package Xand0
 
 import (
+	"bytes"
+	"encoding/base64"
+	"image/jpeg"
 	"io"
 	"net/http"
 	"time"
+
+	"mind/core/framework"
 	"mind/core/framework/skill"
 	"mind/core/framework/log"
 
@@ -70,7 +75,7 @@ func (d *Xand0) OnStart() {
 	go d.StartAPI()
 
 	// Execute the sequence of operations
-	d.executeSeqOfOperations()
+	//d.executeSeqOfOperations()
 }
 
 func (d *Xand0) OnClose() {
@@ -141,11 +146,35 @@ func (d *Xand0) walk() {
 
 func (d *Xand0) ProcessImage() {
 	log.Debug.Println("Starting processing image")
-	img, _ := gocv.ImageToMatRGBA( media.SnapshotRGBA() )
+
+	// First stand
+	hexabody.StandWithHeight(100)
+
+	// Make the snapshot
+	snapshot := media.SnapshotRGBA()
+
+	// img -> jpeg -> bytes
+	buf := new(bytes.Buffer)
+	jpeg.Encode(buf, snapshot, nil)
+	str := base64.StdEncoding.EncodeToString(buf.Bytes())
+
+	// Send to client
+	framework.SendString(str)
+
+	// Do the detection
+	img, _ := gocv.ImageToMatRGBA( snapshot )
 	var dtct DetectPKG.IDetect
 	dtct = DetectPKG.DetectBuilder(img)
-	_, board := dtct.Detect()
+	res, board := dtct.Detect()
 	log.Debug.Println(board)
+
+	// Send to client the result image
+	// img -> jpeg -> bytes
+	ii, _ := res.ToImage()
+	bufRes := new(bytes.Buffer)
+	jpeg.Encode(bufRes, ii, nil)
+	str = base64.StdEncoding.EncodeToString(bufRes.Bytes())
+	framework.SendString(str)
 }
 
 func (d *Xand0) StartAPI() {

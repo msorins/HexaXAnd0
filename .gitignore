@@ -12,9 +12,12 @@
 *.out
 
 \.idea/
+\.deps/
 
 *.png
-
-Robot/opencv-2\.4\.13\.2/3rdparty/include/dshow/
+.DS_STORE
+Robot/robot/deps
 
 GameDetectionOpenCV-GO/
+
+*.h

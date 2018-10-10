@@ -32,7 +32,6 @@ func main() {
 	finalImageWindow.WaitKey(200000)
 
 
-
 	//Webcam mode
 	//webcam, _ := gocv.VideoCaptureDevice(0)
 	//img := gocv.NewMat()

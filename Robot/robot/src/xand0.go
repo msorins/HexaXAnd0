@@ -1,12 +1,17 @@
 package Xand0
 
 import (
+	"io"
+	"net/http"
 	"time"
 	"mind/core/framework/skill"
 	"mind/core/framework/log"
 
 	"mind/core/framework/drivers/distance"
 	"mind/core/framework/drivers/hexabody"
+
+	"github.com/gocv.io/x/gocv"
+	"github.com/gorilla/mux"
 )
 
 const (
@@ -22,7 +27,7 @@ type Xand0 struct {
 
 func NewSkill() skill.Interface {
 	// Use this method to create a new skill.
-
+	gocv.NewMat()
 	return &Xand0{}
 }
 
@@ -46,6 +51,9 @@ func (d *Xand0) OnStart() {
 	if !distance.Available() {
 		log.Error.Println("Distance sensor is not available")
 	}
+
+	// Start the server API
+	go d.StartAPI()
 
 	// Execute the sequence of operations
 	d.executeSeqOfOperations()
@@ -112,4 +120,22 @@ func (d *Xand0) walk() {
 		}
 		time.Sleep(SENSE_INTERVAL * time.Millisecond)
 	}
+}
+
+func (d *Xand0) StartAPI() {
+	r := mux.NewRouter()
+	r.HandleFunc("/", d.IndexHandler)
+	log.Error.Println(http.ListenAndServe(":8000", r))
+}
+
+func (d *Xand0) IndexHandler(w http.ResponseWriter, r *http.Request) {
+	// A very simple health check.
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+
+	d.executeSeqOfOperations()
+
+	// In the future we could report back on the status of our DB, or our cache
+	// (e.g. Redis) by performing a simple PING, and include them in the response.
+	io.WriteString(w, `{"alive": true}`)
 }

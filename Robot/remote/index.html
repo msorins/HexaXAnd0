@@ -16,6 +16,13 @@
 						skillID: skillID,
 						data: "ReExec"
 					})
+				};
+
+				document.getElementById("ProcessImage").onclick = function() {
+					robot.sendData({
+						skillID: skillID,
+						data: "ProcessImage"
+					})
 				}
 			}});
 		</script>
@@ -23,5 +30,6 @@
 	<body>
 
     <button id="ReExec">ReExec</button>
+    <button id="ProcessImage">ProcessImage</button>
 	</body>
 </html>

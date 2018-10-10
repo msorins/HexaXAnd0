@@ -9,9 +9,12 @@ import (
 
 	"mind/core/framework/drivers/distance"
 	"mind/core/framework/drivers/hexabody"
+	"mind/core/framework/drivers/media"
 
 	"github.com/gocv.io/x/gocv"
 	"github.com/gorilla/mux"
+
+	"DetectPKG"
 )
 
 const (
@@ -19,7 +22,10 @@ const (
 	MOVE_HEAD_DURATION = 500 // milliseconds
 	WALK_SPEED         = 0.3 // cm per second
 	SENSE_INTERVAL     = 250 // four times per second
+	FrameWidth  = 1280
+	FrameHeight = 720
 )
+
 
 type Xand0 struct {
 	skill.Base
@@ -30,6 +36,7 @@ func NewSkill() skill.Interface {
 	gocv.NewMat()
 	return &Xand0{}
 }
+
 
 func (d *Xand0) OnStart() {
 	// Use this method to do something when this skill is starting.
@@ -52,6 +59,13 @@ func (d *Xand0) OnStart() {
 		log.Error.Println("Distance sensor is not available")
 	}
 
+	// Start media
+	err = media.Start()
+	if err != nil {
+		log.Error.Println("Media start err:", err)
+		return
+	}
+
 	// Start the server API
 	go d.StartAPI()
 
@@ -64,6 +78,7 @@ func (d *Xand0) OnClose() {
 	log.Debug.Println("OnClose()")
 	distance.Close()
 	hexabody.Close()
+	media.Close()
 }
 
 func (d *Xand0) OnConnect() {
@@ -85,6 +100,8 @@ func (d *Xand0) OnRecvString(data string) {
 	switch data {
 		case "ReExec":
 			d.executeSeqOfOperations()
+		case "ProcessImage":
+			d.ProcessImage()
 	}
 }
 
@@ -120,6 +137,15 @@ func (d *Xand0) walk() {
 		}
 		time.Sleep(SENSE_INTERVAL * time.Millisecond)
 	}
+}
+
+func (d *Xand0) ProcessImage() {
+	log.Debug.Println("Starting processing image")
+	img, _ := gocv.ImageToMatRGBA( media.SnapshotRGBA() )
+	var dtct DetectPKG.IDetect
+	dtct = DetectPKG.DetectBuilder(img)
+	_, board := dtct.Detect()
+	log.Debug.Println(board)
 }
 
 func (d *Xand0) StartAPI() {

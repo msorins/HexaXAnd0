@@ -16,7 +16,7 @@ func computeFromFile(path string) (gocv.Mat, [3][3]int) {
 
 func main() {
 	//// File mode
-	img, board := computeFromFile("/Users/so/Desktop/XAnd0/GameDetectionOpenCV-GO/tests/testData/imgs/2.png")
+	img, board := computeFromFile("/Users/so/Desktop/XAnd0/GameDetectionOpenCV-GO/tests/testData/imgs/3.png")
 
 	// Show the board
 	fmt.Println(board)

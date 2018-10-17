@@ -107,6 +107,8 @@ func (d *Xand0) OnRecvString(data string) {
 			d.executeSeqOfOperations()
 		case "ProcessImage":
 			d.ProcessImage()
+		case "DrawVerticalLine":
+			d.DrawVerticalLine()
 	}
 }
 
@@ -133,6 +135,7 @@ func (d *Xand0) getDistance() float64 {
 }
 
 func (d *Xand0) walk() {
+	hexabody.SetStepLength(0.1)
 	hexabody.WalkContinuously(0, WALK_SPEED)
 	log.Debug.Println("walk()")
 	for {
@@ -142,6 +145,11 @@ func (d *Xand0) walk() {
 		}
 		time.Sleep(SENSE_INTERVAL * time.Millisecond)
 	}
+}
+
+func (d *Xand0) DrawVerticalLine() {
+	hexabody.StandWithHeight(0)
+	hexabody.StandWithHeight(100)
 }
 
 func (d *Xand0) ProcessImage() {

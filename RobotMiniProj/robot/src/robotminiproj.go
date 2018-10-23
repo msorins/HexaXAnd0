@@ -1,7 +1,10 @@
 package RobotMiniProj
 
 import (
+	"io"
+	"net/http"
 	"time"
+	"github.com/gorilla/mux"
 
 	"mind/core/framework/skill"
 	"mind/core/framework/log"
@@ -65,6 +68,9 @@ func (d *RobotMiniProj) OnStart() {
 
 	// Execute the sequence of operations
 	//d.executeSeqOfOperations()
+
+	// Start the API
+	go d.StartAPI()
 }
 
 func (d *RobotMiniProj) OnClose() {
@@ -320,4 +326,23 @@ func (d *RobotMiniProj) DrawHorizontalLine(left float64, right float64) {
 	//time.Sleep(time.Second)
 	//hexabody.StopWalkingContinuously()
 
+}
+
+func (d *RobotMiniProj) StartAPI() {
+	r := mux.NewRouter()
+	r.HandleFunc("/moveFront", d.MoveFrontAPI)
+	log.Error.Println(http.ListenAndServe(":8000", r))
+}
+
+func (d *RobotMiniProj) MoveFrontAPI(w http.ResponseWriter, r *http.Request) {
+	log.Debug.Println("/moveFront request received")
+
+	// Set header && content type
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+
+	// Call move front on the robot
+	d.MoveFront()
+
+	io.WriteString(w, `OK`)
 }

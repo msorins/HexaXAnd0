@@ -1,0 +1,227 @@
+#!/usr/bin/env bash
+set -eu
+trap bashtrap INT
+
+# Constants
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NOCOLOR='\033[0;0m'
+
+# Collect environment variables and arguments
+NO_INSTALL=false
+
+while getopts "n" opt; do
+	case $opt in
+		n)
+			NO_INSTALL=true
+			shift
+			;;
+		\?) 
+			shift
+			;;
+	esac
+done
+LOCAL_IP=$1
+HEXA_IP=$2
+
+MPK_MD5=`md5sum skill.mpk`
+MANIFEST=`cat /skill/manifest.json 2> /dev/null`
+SKILLID=`echo $MANIFEST | jq -r ".skillID"`
+
+PING_MSG=$'\x02\x01'
+PING_FREQUENCY=5
+
+INSTALL_MSG_PREFIX=$'\x03\x0F'
+INSTALL_JSON=`echo "{\"url\": \"${LOCAL_IP}/${MPK_MD5}\"}" ${MANIFEST} | jq add -s`
+INSTALL_MSG="${INSTALL_MSG_PREFIX}${INSTALL_JSON}"
+
+CONNECT_MSG_PREFIX=$'\x03\x01'
+CONNECT_JSON=`echo "{\"skillID\": \"${SKILLID}\"}"`
+CONNECT_MSG="${CONNECT_MSG_PREFIX}${CONNECT_JSON}"
+
+DISCONNECT_MSG_PREFIX=$'\x03\x04'
+DISCONNECT_MSG_JSON="${CONNECT_JSON}"
+DISCONNECT_MSG="${DISCONNECT_MSG_PREFIX}${DISCONNECT_MSG_JSON}"
+
+STOP_MSG_PREFIX=$'\x03\x07'
+STOP_MSG_JSON="${CONNECT_JSON}"
+STOP_MSG="${STOP_MSG_PREFIX}${STOP_MSG_JSON}"
+
+DISCONNECT_STOP_MSGS=("${DISCONNECT_MSG}" "${STOP_MSG}")
+
+SET_LOGLEVEL_PREFIX=$'\x05\x02'
+SET_LOGLEVEL_JSON=`echo "{\"level\": \"debug\"}"`
+SET_LOGLEVEL_MSG="${SET_LOGLEVEL_PREFIX}${SET_LOGLEVEL_JSON}"
+
+WSS=wss://${HEXA_IP}:7589/remotes?userhash=${USER_HASH}
+
+CHECK_ADDRESS_ERROR="The corresponding robot of the IP address you entered did NOT exist or its service was NOT available."
+CHECK_USER_ERROR="You haven't configured Vincross ID or the configured Vincross ID is not a trusted user of this HEXA."
+
+rm -frv /tmp/MINDSTATE
+set_state() {
+	echo -n "$1" > /tmp/MINDSTATE
+}
+
+get_state() {
+	cat /tmp/MINDSTATE
+}
+
+pinging_websocket() {
+	wsta --ping ${PING_FREQUENCY} --ping-msg ${PING_MSG} ${WSS} 2> /dev/null
+}
+
+websocket() {
+	wsta ${WSS} 2> /dev/null
+}
+
+bashtrap () {
+	trap '' 2
+	if [ "`get_state`" == "CONNECTED" ]; then
+		echo ""
+		ackCount=0
+		for msg in "${DISCONNECT_STOP_MSGS[@]}"
+		do
+			echo "${msg}"
+		done | websocket | while read -r line ; do
+			case "${line}" in
+			*"skillID"*)
+				ackCount=$[$ackCount+1]
+				;;
+			esac
+			if [ $ackCount -eq 2 ] ; then
+				set_state "STOPPED"
+				echo "Skill stopped."
+				kill -PIPE $$
+			fi
+		done
+	fi
+	exit 0
+}
+
+cachedBatteryMsg=""
+echo_battery() {
+	batteryMsg=`echo "Battery: $(echo "$1* 100" | bc -l)% $2"`
+	if [ "${batteryMsg}" != "$cachedBatteryMsg" ]; then
+		cachedBatteryMsg=${batteryMsg}
+		echo "${cachedBatteryMsg}"
+	fi
+}
+
+log_battery() {
+	json=$1
+	battery=`echo ${json} | jq -r ".battery"` 
+ 	temperature=`echo ${json} | jq -r ".temperature"` 
+ 	chargingStatus=`echo ${json} | jq -r ".chargingStatus"` 
+	case "${chargingStatus}" in
+		"chargerIn")
+			echo_battery "${battery}" "[Charging]"
+			;;	
+		"chargerOut") 
+			echo_battery "${battery}" "[Not charging]"
+			;;
+	esac
+}
+
+log_message() {
+	json=$1
+	level=`echo "${json}" | jq -r ".level"` 
+	message=`echo "${json}" | jq -r ".message"` 
+	if [ ! -z "${level}" ] && [ "${level}" != "null" ]; then
+		if [ "$message" != "null" ]	#setlevel order will return {"level":"debug"} with no message
+		then
+			echo "${message}"
+		fi
+	fi
+}
+
+connect_msgs() {
+	echo ${SET_LOGLEVEL_MSG}
+	echo ${CONNECT_MSG}
+}
+
+connect() {
+	set_state "CONNECTING"
+	echo "Connecting"
+	connect_msgs | pinging_websocket | while read -r line; do 
+		json=`echo "${line:2}"`
+		if [ ! -z "${json}" ] && [ "${json}" != "null" ]; then
+			if [ "`get_state`" == "CONNECTING" ]; then
+				set_state "CONNECTED"
+				echo -e "${GREEN}Connected !${NOCOLOR}"
+			fi
+			log_message "${json}"
+			log_battery "${json}"
+		fi
+	done
+}
+
+installation_failed() {
+	echo -e "${RED}Installation failed !${NOCOLOR}"
+	echo "$1"
+	exit 1
+}
+
+echo_progress() {
+	status=$1
+	progress=$2
+	echo -e "$(printf "${status} %.0f" $(echo -e "${progress} * 100" | bc -l))%"
+}
+
+check_address() {
+	nc -v -w 1 ${HEXA_IP} -z 7589 2>/dev/null || (echo ${CHECK_ADDRESS_ERROR} && exit -1)
+}
+
+run_ws() {
+	check_address
+	wsta -I ${WSS} 2>&1 | while read -r line; do
+		case "${line}" in
+			*"403 Forbidden"*)
+				echo ${CHECK_USER_ERROR}
+				exit
+				;;
+			*"101 Switching Protocols"*)
+				if [ ${NO_INSTALL} == true ];then
+					connect
+				else
+					install
+				fi
+				;;
+		esac
+	done
+}
+
+install() {
+	set_state "INSTALLING"
+	echo "Installation started"
+	echo ${INSTALL_MSG} | pinging_websocket | while read -r line; do 
+		json=`echo "${line:2}"`
+		# Handle download and install status
+		progress=`echo "${json}" | jq -r ".progress"`
+		status=`echo "${json}" | jq -r ".status"` 
+		message=`echo "${json}" | jq -r ".message"` 
+		case "${status,,}" in
+			"succeed")
+				echo -e "${GREEN}Installation successful !${NOCOLOR}"
+				if [ -e /skill/remote ]; then
+					echo "Point your browser to: http://localhost:7597"
+				fi
+				connect
+				break
+				;;	
+			"downloading") 
+				status="Uploading"
+				echo_progress "${status}" "${progress}"
+				;;
+			"installing") 
+				status="Installing"
+				echo_progress "${status}" "${progress}"
+				;;
+			"failed") 
+				installation_failed "${message}"
+				break
+				;;
+		esac
+	done
+}
+run_ws

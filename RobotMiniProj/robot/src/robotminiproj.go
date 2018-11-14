@@ -636,7 +636,6 @@ func (d *RobotMiniProj) MoveRightAPI(w http.ResponseWriter, r *http.Request) {
 
 func (d *RobotMiniProj) SendVideoFeedToWeb() {
 	for true {
-		log.Debug.Println("Sending feed")
 		buf := new(bytes.Buffer)
 		jpeg.Encode(buf, media.SnapshotYCbCr(), nil)
 		str := base64.StdEncoding.EncodeToString(buf.Bytes())

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Xand0</title>
+		<script type="text/javascript" src="mind-framework.js"></script>
+		<script type="text/javascript">
+			mind.init({callback: function(robot){
+				skillID="Xand0";
+				robot.connectSkill({
+					skillID: skillID,
+                    callback: robot.onRecvSkillData(function(skillID, data) {
+                        document.getElementById('img').setAttribute( 'src', 'data:image/png;base64,'+data);
+                    })
+				});
+
+				document.getElementById("ReExec").onclick = function() {
+					robot.sendData({
+						skillID: skillID,
+						data: "ReExec"
+					})
+				};
+
+                document.getElementById("DrawVerticalLine").onclick = function() {
+					robot.sendData({
+						skillID: skillID,
+						data: "DrawVerticalLine"
+					})
+				};
+
+				document.getElementById("ProcessImage").onclick = function() {
+					robot.sendData({
+						skillID: skillID,
+						data: "ProcessImage"
+					})
+				}
+			}});
+		</script>
+	</head>
+	<body>
+
+    <button id="ReExec">ReExec</button>
+    <button id="ProcessImage">ProcessImage</button>
+    <button id="DrawVerticalLine">DrawVerticalLine</button>
+
+    <img id="img" alt="img" src="a" />
+	</body>
+</html>

@@ -16,84 +16,26 @@ type Detect struct {
 	board [3][3]int
 }
 
-func (this *Detect) filterFirstTwoContourLevels(contours [][]image.Point) [][]image.Point {
-	var graf [1000][]int
-	var visited[1000]bool
-	var depth[1000]int
-	var rects []gocv.RotatedRect
-
-	// Form Min Area Rectangles from conotours
-	for i := 0; i < len(contours); i++ {
-		visited[i] = false
-		depth[i] = -1
-		rects = append(rects, gocv.MinAreaRect(contours[i]))
+func Max(a int, b int) int {
+	if a > b {
+		return a
 	}
 
-	// Form the graf & visited
-	for i := 0; i < len(contours); i++  {
-		for j := 0; j < len(contours); j++ {
-			if i == j {
-				continue
-			}
-
-			if rects[j].BoundingRect.In( rects[i].BoundingRect ) {
-				graf[i] = append(graf[i], j)
-				visited[j] = true
-			}
-		}
-	}
-
-	// Form the depth vector
-	for i := 0; i < len(contours); i++ {
-		// If we found a node at root level
-		if visited[i] == false {
-			depth[i] = 0
-			q := []int{i}
-			kids := 0
-
-			for len(q) > 0 {
-				crt := q[0] // .front
-				q = q[1:] // .pop
-
-				for j := 0; j < len(graf[crt]); j += 1 {
-					if depth[ graf[crt][j] ] <= depth[crt] + 1 {
-						depth[ graf[crt][j] ] = depth[crt] + 1
-						kids += 1
-						q = append(q, graf[crt][j])
-					}
-				}
-			}
-
-			// Also filter contours that do not have any kids
-			if kids == 0 {
-				depth[i] = 999
-			}
-		}
-	}
-
-	// Filter all the contours with depth >= 2
-	finalContours := [][]image.Point{}
-	for i := 0; i < len(contours); i++ {
-		if depth[i] < 2 {
-			finalContours = append(finalContours, contours[i])
-		}
-	}
-
-	return finalContours
+	return b
 }
 
-func (this *Detect) filterContoursThatDoNotHaveNineKids(contours [][]image.Point) ([][]image.Point, []image.Point) {
+func (this *Detect) filterMaxDepthApproach(contours [][]image.Point) ([][]image.Point, []image.Point) {
 	var graf [1000][]int
-	var visited[1000]bool
-	var depth[1000]int
-	var rects []gocv.RotatedRect
-	theOne := -1
+	var grafStrict [1000][]int
+	visited := [1000]bool{}
+	maxdepth := [1000]int{}
+	var rects []image.Rectangle
 
 	// Form Min Area Rectangles from conotours
 	for i := 0; i < len(contours); i++ {
 		visited[i] = false
-		depth[i] = -1
-		rects = append(rects, gocv.MinAreaRect(contours[i]))
+		maxdepth[i] = -1
+		rects = append(rects, gocv.BoundingRect(contours[i]))
 	}
 
 	// Form the graf & visited
@@ -103,58 +45,54 @@ func (this *Detect) filterContoursThatDoNotHaveNineKids(contours [][]image.Point
 				continue
 			}
 
-			if rects[j].BoundingRect.In( rects[i].BoundingRect ) {
+			if rects[j].In( rects[i] ) {
 				graf[i] = append(graf[i], j)
 				visited[j] = true
 			}
 		}
 	}
 
-	// Form the depth vector
+	// Form the max depth vector
 	for i := 0; i < len(contours); i++ {
-		// If we found a node at root level
-		if visited[i] == false {
-			depth[i] = 0
-			q := []int{i}
-			kids := 0
+		used := [1000]bool{}
+		maxdepth[i] = Max(0, maxdepth[i])
+		used[i] = true
+		q := []int{i}
 
-			for len(q) > 0 {
-				crt := q[0] // .front
-				q = q[1:]   // .pop
+		for len(q) > 0 {
+			crt := q[0] // .front
+			q = q[1:] // .pop
 
-				for j := 0; j < len(graf[crt]); j += 1 {
-					if depth[ graf[crt][j] ] <= depth[crt]+1 {
-						depth[ graf[crt][j] ] = depth[crt] + 1
-						kids += 1
-						q = append(q, graf[crt][j])
-					}
+			for j := 0; j < len(graf[crt]); j += 1 {
+				nxt := graf[crt][j]
+				if used[nxt] == false && maxdepth[nxt] < maxdepth[crt] + 1 {
+					maxdepth[nxt] = maxdepth[crt] + 1
+					used[nxt] = true
 				}
 			}
+		}
+	}
 
-			// Also filter contours that do not have any kids
-			if kids != 9 {
-				depth[i] = 999
-			}
-			if kids == 9 {
-				theOne = i
+	for i := 0; i < len(contours); i++  {
+		for j := 0; j < len(graf[i]); j++ {
+			if maxdepth[ graf[i][j] ] == maxdepth[i] + 1 {
+				grafStrict[i] = append(grafStrict[i], graf[i][j])
 			}
 		}
 	}
 
-	// Filter all the contours with depth >= 2
-	finalContours := [][]image.Point{}
-	rootContour  := []image.Point{}
 	for i := 0; i < len(contours); i++ {
-		if i == theOne {
-			rootContour = contours[i]
-		} else {
-			if depth[i] < 2 {
-				finalContours = append(finalContours, contours[i])
+		if len(grafStrict[i]) == 9 {
+			miniContours := [][]image.Point{}
+			for j := 0; j < 9; j++ {
+				miniContours = append(miniContours, contours[ grafStrict[i][j] ])
 			}
+
+			return miniContours, contours[ i ]
 		}
 	}
 
-	return finalContours, rootContour
+	return [][]image.Point{}, []image.Point{}
 }
 
 func (this *Detect) computeBoardState() [3][3]int {
@@ -200,7 +138,7 @@ func (this *Detect) computeBoardState() [3][3]int {
 	//	gocv.DrawContours(&img, [][]image.Point{rects[i].Contour}, 0, color.RGBA{255, 0, 0, 100}, 1)
 	//	finalImageWindow.IMShow(img)
 	//	finalImageWindow.WaitKey(1500)
-	//}
+	//}Lo
 
 	// Check to see the actual state of the game
 	game := [3][3]int { {0, 0, 0}, {0, 0, 0}, {0, 0, 0} }
@@ -290,8 +228,8 @@ func (this *Detect) processImage() (gocv.Mat, [3][3]int) {
 
 	// Get the contours
 	contours := gocv.FindContours(this.imgGray, gocv.RetrievalTree, gocv.ContourApproximationMode(gocv.ChainApproxSimple))
-	var approxedContours [][]image.Point
 
+	var approxedContours [][]image.Point
 	// Approximate the contours with an e = 3%
 	for i := 0; i < len(contours); i++{
 		approxedContour := gocv.ApproxPolyDP(contours[i], 50, true)
@@ -307,14 +245,20 @@ func (this *Detect) processImage() (gocv.Mat, [3][3]int) {
 		return this.img, [3][3]int{}
 	}
 
-	// Filter all the contours that are very nested
-	finalImageWindow := gocv.NewWindow("DrawingPortionsImage")
-	gocv.DrawContours(&this.img, approxedContours, -1, color.RGBA{255, 0, 0, 100}, 1)
-	finalImageWindow.IMShow(this.img)
-	finalImageWindow.WaitKey(500)
+	//finalImageWindow := gocv.NewWindow("ABC")
+	//for i:= 0; i < len(approxedContours); i++ {
+	//	gocv.DrawContours(&this.img, approxedContours, i, color.RGBA{255, 255, 0, 255}, 1,)
+	//
+	//	rect := gocv.BoundingRect(approxedContours[i])
+	//	gocv.DrawKeyPoints(this.img, []gocv.KeyPoint{ gocv.KeyPoint{float64(rect.Min.X), float64(rect.Min.Y), 10, 0, 0, 0, 0}, gocv.KeyPoint{float64(rect.Max.X), float64(rect.Max.Y), 10, 0, 0, 0, 0} }, &this.img, color.RGBA{0, 255, 0, 255}, 0)
+	//
+	//	finalImageWindow.IMShow(this.img)
+	//	finalImageWindow.WaitKey(1500)
+	//}
 
-	//this.contours  = this.filterFirstTwoContourLevels(approxedContours)
-	this.contours, this.rootContour = this.filterContoursThatDoNotHaveNineKids(approxedContours)
+
+	// Filter all the extra contours (that do not have exactly 9 kids)
+	this.contours, this.rootContour = this.filterMaxDepthApproach(approxedContours)
 
 	// Get the parsed baoard
 	this.board = this.computeBoardState()

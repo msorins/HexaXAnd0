@@ -27,7 +27,7 @@ In more details, the image processing pipeline looks like this:
     * Approximating the contours (to remove extra edges)
     * Keeping only the contours that have 4 edges
     * Looking for a bigger contour that includes 9 sub contours (game board with all the 9 smaller squares)
-5. Iterating through contours and looking at the pixels colors to determine if a square is empty, contains and X or 0 (the robot and the player are going to use different colors)
+5. Iterating through contours and looking at the pixels colours to determine if a square is empty, contains and X or 0 (the robot and the player are going to use different colours)
 
 # Robot writing
 I have mounted a marker on the robot's head and using a built in distance sensor it will approach the wall until the tip of the marker touches it, and then it nod its head or tilt its body to make an *X*

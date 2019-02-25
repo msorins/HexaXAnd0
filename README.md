@@ -4,11 +4,11 @@
 [![](http://img.youtube.com/vi/-3kaH5sj-EM/0.jpg)](http://www.youtube.com/watch?v=-3kaH5sj-EM "HexaXAnd0 Demo")
 
 ## Screens
-![Demo Image ](https://github.com/msorins/HexaXAnd0/blob/master/0.jpeg?raw=true "Demo Image")
+![Demo Image ](https://github.com/msorins/HexaXAnd0/blob/GameDetection/0.jpeg?raw=true "Demo Image")
 
-![Demo Image ](https://github.com/msorins/HexaXAnd0/blob/master/1.jpeg?raw=true "Demo Image")
+![Demo Image ](https://github.com/msorins/HexaXAnd0/blob/GameDetection/1.jpeg?raw=true "Demo Image")
 
-![Demo Image ](https://github.com/msorins/HexaXAnd0/blob/master/2.jpeg?raw=true "Demo Image")
+![Demo Image ](https://github.com/msorins/HexaXAnd0/blob/GameDetection/2.jpeg?raw=true "Demo Image")
 
 # Idea
 Playing X and 0 with a robot.
